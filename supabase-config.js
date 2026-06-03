@@ -1,0 +1,4 @@
+const polarisDb = supabase.createClient(
+  'https://nflnjhcyrdjayvjpmyaf.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mbG5qaGN5cmRqYXl2anBteWFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NzQzODgsImV4cCI6MjA5NjA1MDM4OH0.mDknIc7kqs2WVBKEXVndc_fpTkdbJnDYNYg57Tgk04M'
+);

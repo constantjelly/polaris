@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POLARIS — Admin</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <canvas id="stars-canvas"></canvas>
+
+  <div id="login-overlay">
+    <div class="login-modal">
+      <div class="login-icon">✦</div>
+      <h2>ADMIN ACCESS</h2>
+      <p>Enter the passkey to continue.</p>
+      <input type="password" id="password-input" placeholder="Passkey" />
+      <button id="login-btn" class="admin-btn">UNLOCK</button>
+      <span id="login-error"></span>
+    </div>
+  </div>
+
+  <div id="admin-panel" style="display:none;">
+    <nav class="nav" id="main-nav">
+      <div class="nav-logo"><a href="index.html">POLARIS ✦</a></div>
+      <ul class="nav-links">
+        <li><a href="index.html">HOME</a></li>
+        <li><a href="#" id="logout-link">LOCK</a></li>
+      </ul>
+    </nav>
+
+    <section class="page-hero">
+      <div class="page-hero-content" style="animation: fadeUp 1s ease 0.2s both;">
+        <span class="page-tag">CONTROL CENTRE</span>
+        <h1 class="page-title">ADMIN PANEL</h1>
+        <p class="page-subtitle">Write articles, upload images, and publish<br />to Space Facts, Starry Nights &amp; Exams pages.</p>
+      </div>
+    </section>
+
+    <section class="admin-section">
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="new">NEW ARTICLE</button>
+        <button class="admin-tab" data-tab="manage">MANAGE ARTICLES</button>
+      </div>
+
+      <div id="tab-new" class="admin-tab-content active">
+        <form id="article-form">
+          <div class="admin-form-group">
+            <label>Publish to</label>
+            <select id="article-page" required>
+              <option value="facts">Space Facts</option>
+              <option value="nights">Starry Nights</option>
+              <option value="exams">Exams &amp; Scholarships</option>
+            </select>
+          </div>
+
+          <div class="admin-form-group">
+            <label>Article Title</label>
+            <input type="text" id="article-title" placeholder="e.g. THE SUN'S CORE" required />
+          </div>
+
+          <div class="admin-form-group">
+            <label>Content</label>
+            <textarea id="article-content" rows="6" placeholder="Write your article content here..." required></textarea>
+          </div>
+
+          <div class="admin-form-group">
+            <label>Image (optional)</label>
+            <input type="file" id="article-image" accept="image/*" />
+            <div id="image-preview" style="display:none;">
+              <img id="preview-img" />
+              <button type="button" id="remove-image" class="admin-btn small danger">REMOVE</button>
+            </div>
+          </div>
+
+          <div class="admin-actions">
+            <button type="submit" id="publish-btn" class="admin-btn primary">PUBLISH ARTICLE</button>
+          </div>
+        </form>
+      </div>
+
+      <div id="tab-manage" class="admin-tab-content">
+        <div class="filter-bar">
+          <select id="filter-page">
+            <option value="all">All Pages</option>
+            <option value="facts">Space Facts</option>
+            <option value="nights">Starry Nights</option>
+            <option value="exams">Exams &amp; Scholarships</option>
+          </select>
+        </div>
+        <div id="articles-list"></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="stars.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
