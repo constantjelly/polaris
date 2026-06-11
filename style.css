@@ -8,6 +8,13 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'Playfair Display';
+  src: url('Playfair_Display/PlayfairDisplay-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 :root {
   --black: #000000;
   --deep: #050508;
@@ -20,12 +27,12 @@
   --moon-grey: #9ca3af;
   --earth-blue: #3b82f6;
   --accent: rgba(255,255,255,0.15);
-  --font-display: 'Orbitron', sans-serif;
-  --font-body: 'Orbitron', sans-serif;
-  --font-serif: 'Orbitron', sans-serif;
+  --font-display: 'Playfair Display', serif;
+  --font-body: 'Playfair Display', serif;
+  --font-serif: 'Playfair Display', serif;
 }
 
-html { scroll-behavior: smooth; font-size: 16px; }
+html { scroll-behavior: smooth; font-size: 14px; }
 
 body {
   background: var(--black);
@@ -590,6 +597,53 @@ a { text-decoration: none; color: inherit; }
   font-size: 0.55rem;
   letter-spacing: 0.15em;
   color: var(--muted);
+}
+
+/* ===================== ARTICLE PAGE ===================== */
+.article-text {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  line-height: 2;
+  color: var(--off-white);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.article-nav-back {
+  margin-top: 4rem;
+  text-align: center;
+}
+
+#article-date {
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: -1rem;
+}
+
+/* ===================== ARTICLE CARD LINKS ===================== */
+.article-card-link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: -1.5rem;
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+
+.article-card-link:hover {
+  border-color: var(--border);
+  background: rgba(255,255,255,0.02);
+}
+
+.article-card-link h3 {
+  transition: color 0.3s ease;
+}
+
+.article-card-link:hover h3 {
+  color: var(--off-white);
 }
 
 /* ===================== ABOUT PAGE ===================== */

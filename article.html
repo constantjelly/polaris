@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>POLARIS — Exams &amp; Scholarships</title>
-  <meta name="description" content="Space education pathways for aspiring explorers. Find astronomy exams, NASA scholarships, ESA traineeships, ISRO programmes, and more." />
-  <meta name="keywords" content="astronomy exams, space scholarships, NASA scholarship, ESA traineeship, ISRO young scientist, astronomy Olympiad, space education" />
+  <title>POLARIS — Article</title>
+  <meta name="description" content="Read the full article on Polaris." />
+  <meta name="keywords" content="space, astronomy, article, Polaris" />
   <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="admin.css" />
 </head>
 <body>
   <canvas id="stars-canvas"></canvas>
@@ -17,20 +16,23 @@
     <ul class="nav-links">
       <li><a href="facts.html">SPACE FACTS</a></li>
       <li><a href="nights.html">STARRY NIGHTS</a></li>
-      <li><a href="exams.html" class="active">EXAMS</a></li>
+      <li><a href="exams.html">EXAMS</a></li>
     </ul>
   </nav>
 
-  <section class="page-hero">
+  <section class="page-hero" id="article-hero">
     <div class="page-hero-content" style="animation: fadeUp 1s ease 0.2s both;">
-      <span class="page-tag">OPPORTUNITIES</span>
-      <h1 class="page-title">EXAMS &amp; SCHOLARSHIPS</h1>
-      <p class="page-subtitle">Space education pathways for<br />aspiring explorers at every level.</p>
+      <span class="page-tag" id="article-tag">ARTICLE</span>
+      <h1 class="page-title" id="article-title">Loading...</h1>
+      <p class="page-subtitle" id="article-date"></p>
     </div>
   </section>
 
-  <section class="content-section">
-    <div id="dynamic-articles"></div>
+  <section class="content-section" id="article-content">
+    <div id="article-body"></div>
+    <div class="article-nav-back">
+      <a href="#" id="back-link" class="cta-btn">← BACK</a>
+    </div>
   </section>
 
   <footer>
@@ -59,6 +61,51 @@
   <script src="supabase-config.js"></script>
   <script src="stars.js"></script>
   <script src="page.js"></script>
-  <script src="content-loader.js" data-page="exams"></script>
+  <script>
+    (async function () {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      if (!id) {
+        document.getElementById('article-title').textContent = 'Article not found';
+        document.getElementById('article-body').innerHTML = '<p style="color:var(--muted);">No article ID specified.</p>';
+        return;
+      }
+
+      const { data, error } = await polarisDb
+        .from('articles')
+        .select('*')
+        .eq('id', id)
+        .eq('published', true)
+        .single();
+
+      if (error || !data) {
+        document.getElementById('article-title').textContent = 'Article not found';
+        document.getElementById('article-body').innerHTML = '<p style="color:var(--muted);">This article could not be loaded.</p>';
+        return;
+      }
+
+      const article = data;
+      const pageLabels = { facts: 'SPACE FACTS', nights: 'STARRY NIGHTS', exams: 'EXAMS & SCHOLARSHIPS' };
+      const pagePaths = { facts: 'facts.html', nights: 'nights.html', exams: 'exams.html' };
+
+      document.getElementById('article-tag').textContent = pageLabels[article.page] || 'ARTICLE';
+      document.getElementById('article-title').textContent = article.title;
+      document.getElementById('article-date').textContent = new Date(article.date).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric'
+      });
+
+      const backLink = document.getElementById('back-link');
+      backLink.href = pagePaths[article.page] || 'index.html';
+      backLink.textContent = '\u2190 BACK TO ' + (pageLabels[article.page] || 'HOME');
+
+      const imageHtml = article.image_url
+        ? '<div style="margin: 2rem 0;"><img src="' + article.image_url + '" alt="' + article.title + '" style="max-width:100%;border-radius:8px;border:1px solid var(--border);" /></div>'
+        : '';
+
+      document.getElementById('article-body').innerHTML = imageHtml + '<div class="article-text">' + article.content.replace(/\n/g, '<br/>') + '</div>';
+
+      document.title = 'POLARIS \u2014 ' + article.title;
+    })();
+  </script>
 </body>
 </html>

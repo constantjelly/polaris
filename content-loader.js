@@ -41,12 +41,11 @@
         : '';
 
       return `
-        <div class="${config.itemClass}" data-scroll-reveal style="opacity:0;transform:translateY(30px);transition:opacity 0.7s ease,transform 0.7s ease;">
+        <a href="article.html?id=${a.id}" class="${config.itemClass} article-card-link" data-scroll-reveal style="display:block;opacity:0;transform:translateY(30px);transition:opacity 0.7s ease,transform 0.7s ease;">
           <div class="article-meta">${dateStr}</div>
           <h3>${a.title}</h3>
           ${imageHtml}
-          <p>${a.content.replace(/\n/g, '<br/>')}</p>
-        </div>
+        </a>
       `;
     }).join('');
 
