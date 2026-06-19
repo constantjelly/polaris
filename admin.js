@@ -1,5 +1,5 @@
 (function () {
-  const ADMIN_PASSWORD = 'polaris123';
+  const ADMIN_PASSWORD = 'holypapi123';
 
   let editingId = null;
   let uploadedFile = null;
