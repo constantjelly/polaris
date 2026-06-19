@@ -2,15 +2,15 @@
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 @font-face {
-  font-family: 'Orbitron';
-  src: url('Orbitron/Orbitron-VariableFont_wght.ttf') format('truetype');
+  font-family: 'Bitcount';
+  src: url('Bitcount_Prop_Single/BitcountPropSingle-VariableFont_CRSV,ELSH,ELXP,slnt,wght.ttf') format('truetype');
   font-weight: 100 900;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'Playfair Display';
-  src: url('Playfair_Display/PlayfairDisplay-VariableFont_wght.ttf') format('truetype');
+  font-family: 'DM Sans';
+  src: url('DM_Sans/DMSans-VariableFont_opsz,wght.ttf') format('truetype');
   font-weight: 100 900;
   font-display: swap;
 }
@@ -27,9 +27,9 @@
   --moon-grey: #9ca3af;
   --earth-blue: #3b82f6;
   --accent: rgba(255,255,255,0.15);
-  --font-display: 'Playfair Display', serif;
-  --font-body: 'Playfair Display', serif;
-  --font-serif: 'Playfair Display', serif;
+  --font-display: 'Bitcount', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-serif: 'DM Sans', sans-serif;
 }
 
 html { scroll-behavior: smooth; font-size: 14px; }
