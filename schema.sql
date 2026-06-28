@@ -33,7 +33,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER SET search_path = ''
 AS $$
 BEGIN
-  INSERT INTO profiles (id)
+  INSERT INTO public.profiles (id)
   VALUES (NEW.id);
   RETURN NEW;
 END;
@@ -45,8 +45,8 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
 -- 4. Storage bucket for user photo submissions
--- Run this separately in the SQL Editor:
--- INSERT INTO storage.buckets (id, name, public) VALUES ('user-submissions', 'user-submissions', true);
+INSERT INTO storage.buckets (id, name, public) VALUES ('user-submissions', 'user-submissions', true)
+ON CONFLICT (id) DO NOTHING;
 
 -- 5. Enable Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
