@@ -53,45 +53,45 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
 
 -- 6. RLS Policies for profiles
--- Anyone can read profiles
+DROP POLICY IF EXISTS "Profiles are publicly readable" ON profiles;
 CREATE POLICY "Profiles are publicly readable"
   ON profiles FOR SELECT
   USING (true);
 
--- Users can update their own profile
+DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
 CREATE POLICY "Users can update their own profile"
   ON profiles FOR UPDATE
   USING (auth.uid() = id);
 
 -- 7. RLS Policies for submissions
--- Anyone can read approved submissions (for the gallery)
+DROP POLICY IF EXISTS "Anyone can read approved submissions" ON submissions;
 CREATE POLICY "Anyone can read approved submissions"
   ON submissions FOR SELECT
   USING (status = 'approved');
 
--- Users can read their own submissions (any status)
+DROP POLICY IF EXISTS "Users can read their own submissions" ON submissions;
 CREATE POLICY "Users can read their own submissions"
   ON submissions FOR SELECT
   USING (auth.uid() = user_id);
 
--- Admins can read all submissions
+DROP POLICY IF EXISTS "Admins can read all submissions" ON submissions;
 CREATE POLICY "Admins can read all submissions"
   ON submissions FOR SELECT
   USING (
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = true)
   );
 
--- Authenticated users can submit photos
+DROP POLICY IF EXISTS "Users can create submissions" ON submissions;
 CREATE POLICY "Users can create submissions"
   ON submissions FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
--- Users can update their own pending submissions
+DROP POLICY IF EXISTS "Users can update their own pending submissions" ON submissions;
 CREATE POLICY "Users can update their own pending submissions"
   ON submissions FOR UPDATE
   USING (auth.uid() = user_id AND status = 'pending');
 
--- Admins can update any submission (to approve/reject)
+DROP POLICY IF EXISTS "Admins can update any submission" ON submissions;
 CREATE POLICY "Admins can update any submission"
   ON submissions FOR UPDATE
   USING (
