@@ -26,6 +26,18 @@ CREATE TABLE IF NOT EXISTS submissions (
   reviewed_at TIMESTAMPTZ
 );
 
+-- 2b. User-submitted articles awaiting admin review
+CREATE TABLE IF NOT EXISTS article_submissions (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  page TEXT NOT NULL CHECK (page IN ('facts', 'nights', 'exams')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  reviewed_at TIMESTAMPTZ
+);
+
 -- 3. Auto-create a profile row when a new user signs up
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER
@@ -65,6 +77,7 @@ CREATE POLICY "Users can upload their own submission files"
 -- 5. Enable Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE article_submissions ENABLE ROW LEVEL SECURITY;
 
 -- 6. RLS Policies for profiles
 DROP POLICY IF EXISTS "Profiles are publicly readable" ON profiles;
@@ -138,12 +151,60 @@ CREATE POLICY "Users can delete their own pending submissions"
     AND status = 'pending'
   );
 
--- 8. How to make yourself an admin:
+DROP POLICY IF EXISTS "Admins can delete approved submissions" ON submissions;
+CREATE POLICY "Admins can delete approved submissions"
+  ON submissions FOR DELETE
+  USING (
+    status = 'approved'
+    AND EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = (current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid
+        AND is_admin = true
+    )
+  );
+
+-- 8. RLS Policies for article submissions
+DROP POLICY IF EXISTS "Users can create article submissions" ON article_submissions;
+CREATE POLICY "Users can create article submissions"
+  ON article_submissions FOR INSERT
+  WITH CHECK (
+    (current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid = user_id
+    AND status = 'pending'
+  );
+
+DROP POLICY IF EXISTS "Users can read their own article submissions" ON article_submissions;
+CREATE POLICY "Users can read their own article submissions"
+  ON article_submissions FOR SELECT
+  USING ((current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid = user_id);
+
+DROP POLICY IF EXISTS "Admins can read all article submissions" ON article_submissions;
+CREATE POLICY "Admins can read all article submissions"
+  ON article_submissions FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = (current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid
+        AND is_admin = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins can update article submissions" ON article_submissions;
+CREATE POLICY "Admins can update article submissions"
+  ON article_submissions FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = (current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid
+        AND is_admin = true
+    )
+  );
+
+-- 9. How to make yourself an admin:
 -- After signing in with Google once, find your user ID in Supabase Auth > Users,
 -- then run:
 -- UPDATE profiles SET is_admin = true WHERE id = 'your-user-uuid';
 
--- 9. Enable Google Auth:
+-- 10. Enable Google Auth:
 -- Go to Supabase Dashboard > Authentication > Providers > Google
 -- Enable it and add your Google Cloud OAuth credentials.
 -- Also set Site URL to your Vercel domain and add redirect URLs:

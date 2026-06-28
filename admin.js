@@ -29,10 +29,12 @@
   const filterPage = document.getElementById('filter-page');
   const tabs = document.querySelectorAll('.admin-tab');
   const tabContents = document.querySelectorAll('.admin-tab-content');
-  const statusMsg = document.getElementById('status-msg');
   const approvalsList = document.getElementById('approvals-list');
+  const galleryList = document.getElementById('gallery-list');
+  const articleApprovalsList = document.getElementById('article-approvals-list');
 
   function setStatus(msg, isError) {
+    const statusMsg = document.getElementById('status-msg');
     if (!statusMsg) return;
     statusMsg.textContent = msg;
     statusMsg.style.color = isError ? '#ef4444' : '#22c55e';
@@ -47,6 +49,8 @@
   tabs.forEach(tab => tab.addEventListener('click', () => {
     showTab(tab.dataset.tab);
     if (tab.dataset.tab === 'approvals') renderApprovals();
+    if (tab.dataset.tab === 'gallery') renderGallery();
+    if (tab.dataset.tab === 'article-approvals') renderArticleApprovals();
   }));
 
   function showOverlay() {
@@ -358,9 +362,185 @@
     setStatus('Submission ' + status + '.');
   }
 
+  async function renderGallery() {
+    galleryList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem;font-family:var(--font-serif);">Loading...</p>';
+
+    const { data: submissions, error } = await polarisDb
+      .from('submissions')
+      .select('*, profiles!submissions_user_id_fkey(username)')
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      galleryList.innerHTML = '<p style="color:#ef4444;text-align:center;padding:2rem;">Failed to load gallery photos.</p>';
+      return;
+    }
+
+    if (!submissions || !submissions.length) {
+      galleryList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem;font-family:var(--font-serif);">No approved gallery photos.</p>';
+      return;
+    }
+
+    galleryList.innerHTML = submissions.map(s => {
+      const dateStr = new Date(s.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      return `
+        <div class="approval-card" data-id="${s.id}">
+          <div class="approval-img-wrap">
+            <img src="${s.image_url}" alt="Submission" class="approval-img" />
+          </div>
+          <div class="approval-info">
+            <div class="approval-meta">
+              <span class="approval-user">@${s.profiles?.username || 'unknown'}</span>
+              <span class="approval-date">${dateStr}</span>
+            </div>
+            <p class="approval-desc">${s.description || 'No description'}</p>
+            ${s.location ? '<p class="approval-location">' + s.location + '</p>' : ''}
+            <div class="approval-actions">
+              <button class="admin-btn small danger gallery-delete">DELETE FROM GALLERY</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    galleryList.querySelectorAll('.gallery-delete').forEach(btn => {
+      btn.addEventListener('click', async function () {
+        const card = this.closest('.approval-card');
+        const id = parseInt(card.dataset.id);
+        await deleteGallerySubmission(id, card);
+      });
+    });
+  }
+
+  async function deleteGallerySubmission(id, cardEl) {
+    if (!confirm('Delete this approved photo from the gallery?')) return;
+    cardEl.style.opacity = '0.5';
+
+    const { error } = await polarisDb
+      .from('submissions')
+      .delete()
+      .eq('id', id)
+      .eq('status', 'approved');
+
+    if (error) {
+      cardEl.style.opacity = '1';
+      setStatus('Error: ' + error.message, true);
+      return;
+    }
+
+    cardEl.remove();
+    setStatus('Gallery photo deleted.');
+  }
+
+  async function renderArticleApprovals() {
+    articleApprovalsList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem;font-family:var(--font-serif);">Loading...</p>';
+
+    const { data: articles, error } = await polarisDb
+      .from('article_submissions')
+      .select('*, profiles!article_submissions_user_id_fkey(username)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      articleApprovalsList.innerHTML = '<p style="color:#ef4444;text-align:center;padding:2rem;">Failed to load article submissions.</p>';
+      return;
+    }
+
+    if (!articles || !articles.length) {
+      articleApprovalsList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem;font-family:var(--font-serif);">No pending article submissions.</p>';
+      return;
+    }
+
+    const pageLabels = { facts: 'Space Facts', nights: 'Starry Nights', exams: 'Exams & Scholarships' };
+    articleApprovalsList.innerHTML = articles.map(a => {
+      const dateStr = new Date(a.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      return `
+        <div class="approval-card" data-id="${a.id}">
+          <div class="approval-info">
+            <div class="approval-meta">
+              <span class="approval-user">@${a.profiles?.username || 'unknown'}</span>
+              <span class="approval-date">${dateStr}</span>
+              <span class="approval-date">${pageLabels[a.page] || a.page}</span>
+            </div>
+            <h3 style="font-family:var(--font-display);letter-spacing:0.1em;margin:0.4rem 0;">${a.title}</h3>
+            <p class="approval-desc">${a.content.replace(/\n/g, '<br/>')}</p>
+            <div class="approval-actions">
+              <button class="admin-btn small article-approve">PUBLISH</button>
+              <button class="admin-btn small danger article-reject">REJECT</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    articleApprovalsList.querySelectorAll('.article-approve').forEach(btn => {
+      btn.addEventListener('click', async function () {
+        const card = this.closest('.approval-card');
+        const id = parseInt(card.dataset.id);
+        await reviewArticleSubmission(id, 'approved', card);
+      });
+    });
+
+    articleApprovalsList.querySelectorAll('.article-reject').forEach(btn => {
+      btn.addEventListener('click', async function () {
+        const card = this.closest('.approval-card');
+        const id = parseInt(card.dataset.id);
+        await reviewArticleSubmission(id, 'rejected', card);
+      });
+    });
+  }
+
+  async function reviewArticleSubmission(id, status, cardEl) {
+    cardEl.style.opacity = '0.5';
+
+    const { data: submission, error: fetchError } = await polarisDb
+      .from('article_submissions')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !submission) {
+      cardEl.style.opacity = '1';
+      setStatus('Error: failed to load article submission.', true);
+      return;
+    }
+
+    if (status === 'approved') {
+      const { error: publishError } = await polarisDb
+        .from('articles')
+        .insert({
+          title: submission.title,
+          content: submission.content,
+          page: submission.page,
+          image_url: null,
+          date: new Date().toISOString(),
+          published: true,
+        });
+      if (publishError) {
+        cardEl.style.opacity = '1';
+        setStatus('Error: ' + publishError.message, true);
+        return;
+      }
+    }
+
+    const { error: updateError } = await polarisDb
+      .from('article_submissions')
+      .update({ status: status, reviewed_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (updateError) {
+      cardEl.style.opacity = '1';
+      setStatus('Error: ' + updateError.message, true);
+      return;
+    }
+
+    cardEl.remove();
+    setStatus(status === 'approved' ? 'Article published.' : 'Article rejected.');
+  }
+
   // Add status message element
   const statusDiv = document.createElement('div');
   statusDiv.id = 'status-msg';
-  statusDiv.style.cssText = 'margin-top:1rem;font-family:var(--font-body);font-size:0.7rem;letter-spacing:0.1em;text-align:center;';
-  document.querySelector('.admin-actions')?.appendChild(statusDiv);
+  statusDiv.style.cssText = 'margin:-1.5rem 0 2rem;font-family:var(--font-body);font-size:0.7rem;letter-spacing:0.1em;text-align:center;';
+  document.querySelector('.admin-tabs')?.insertAdjacentElement('afterend', statusDiv);
 })();

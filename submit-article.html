@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POLARIS — Submit an Article</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <canvas id="stars-canvas"></canvas>
+
+  <nav class="nav" id="main-nav">
+    <div class="nav-logo"><a href="index.html">POLARIS ✦</a></div>
+    <ul class="nav-links">
+      <li><a href="facts.html">SPACE FACTS</a></li>
+      <li><a href="nights.html">STARRY NIGHTS</a></li>
+      <li><a href="exams.html">EXAMS</a></li>
+    </ul>
+  </nav>
+
+  <section class="page-hero">
+    <div class="page-hero-content" style="animation: fadeUp 1s ease 0.2s both;">
+      <span class="page-tag">CONTRIBUTE</span>
+      <h1 class="page-title">SUBMIT AN ARTICLE</h1>
+      <p class="page-subtitle">Share astronomy writing with the Polaris community.<br />Your article will be reviewed before publishing.</p>
+    </div>
+  </section>
+
+  <section class="contact-section" id="submit-article-section">
+    <div id="article-auth-required" style="text-align:center;padding:3rem;">
+      <p style="color:var(--muted);font-family:var(--font-serif);margin-bottom:1.5rem;">You need to sign in to submit an article.</p>
+      <button id="article-login-btn" class="cta-btn">SIGN IN WITH GOOGLE</button>
+    </div>
+
+    <div id="article-form-container" style="display:none;max-width:720px;margin:0 auto;">
+      <div class="admin-form-group">
+        <label for="article-page">PUBLISH TO</label>
+        <select id="article-page" required>
+          <option value="facts">Space Facts</option>
+          <option value="nights">Starry Nights</option>
+          <option value="exams">Exams &amp; Scholarships</option>
+        </select>
+      </div>
+
+      <div class="admin-form-group">
+        <label for="article-title">TITLE</label>
+        <input type="text" id="article-title" placeholder="e.g. WHY VENUS SHINES SO BRIGHTLY" required />
+      </div>
+
+      <div class="admin-form-group">
+        <label for="article-content">ARTICLE</label>
+        <textarea id="article-content" rows="10" placeholder="Write your article here..." required></textarea>
+      </div>
+
+      <div class="admin-actions" style="text-align:center;">
+        <button id="article-submit-btn" class="admin-btn primary">SUBMIT FOR REVIEW</button>
+        <span id="article-submit-status" style="display:block;margin-top:0.75rem;font-family:var(--font-body);font-size:0.7rem;letter-spacing:0.1em;text-align:center;"></span>
+      </div>
+    </div>
+
+    <div id="article-submit-success" style="display:none;text-align:center;padding:3rem;">
+      <p style="color:#22c55e;font-family:var(--font-serif);font-size:1.1rem;margin-bottom:1.5rem;">
+        Article submitted successfully! It will be reviewed by our team.
+      </p>
+      <a href="profile.html" class="cta-btn">VIEW YOUR PROFILE</a>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="auth.js"></script>
+  <script src="stars.js"></script>
+  <script src="page.js"></script>
+  <script>
+    document.addEventListener('auth-ready', async function () {
+      const user = AUTH.getUser();
+      const authReq = document.getElementById('article-auth-required');
+      const formContainer = document.getElementById('article-form-container');
+      const successDiv = document.getElementById('article-submit-success');
+      const loginBtn = document.getElementById('article-login-btn');
+      const pageInput = document.getElementById('article-page');
+      const titleInput = document.getElementById('article-title');
+      const contentInput = document.getElementById('article-content');
+      const submitBtn = document.getElementById('article-submit-btn');
+      const statusSpan = document.getElementById('article-submit-status');
+
+      loginBtn.addEventListener('click', function () {
+        AUTH.signIn(window.location.href);
+      });
+
+      if (!user) {
+        authReq.style.display = 'block';
+        return;
+      }
+
+      authReq.style.display = 'none';
+      formContainer.style.display = 'block';
+
+      function setStatus(msg, isError) {
+        statusSpan.textContent = msg;
+        statusSpan.style.color = isError ? '#ef4444' : '#22c55e';
+      }
+
+      submitBtn.addEventListener('click', async function () {
+        const title = titleInput.value.trim();
+        const content = contentInput.value.trim();
+        const page = pageInput.value;
+
+        if (!title) {
+          setStatus('Please add a title.', true);
+          return;
+        }
+        if (!content) {
+          setStatus('Please write the article.', true);
+          return;
+        }
+
+        submitBtn.textContent = 'SUBMITTING...';
+        submitBtn.disabled = true;
+
+        try {
+          const { error } = await polarisDb
+            .from('article_submissions')
+            .insert({
+              user_id: user.id,
+              title: title,
+              content: content,
+              page: page,
+              status: 'pending',
+            });
+          if (error) throw error;
+
+          formContainer.style.display = 'none';
+          successDiv.style.display = 'block';
+        } catch (err) {
+          setStatus('Error: ' + err.message, true);
+          submitBtn.textContent = 'SUBMIT FOR REVIEW';
+          submitBtn.disabled = false;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
