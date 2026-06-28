@@ -1,5 +1,5 @@
 (function () {
-  const ADMIN_PASSWORD = 'holypapi123';
+  'use strict';
 
   let editingId = null;
   let uploadedFile = null;
@@ -7,10 +7,15 @@
 
   const overlay = document.getElementById('login-overlay');
   const panel = document.getElementById('admin-panel');
-  const passwordInput = document.getElementById('password-input');
-  const loginBtn = document.getElementById('login-btn');
+  const loginTitle = document.getElementById('admin-login-title');
+  const loginDesc = document.getElementById('admin-login-desc');
+  const loginBtn = document.getElementById('admin-login-btn');
   const loginError = document.getElementById('login-error');
+  const loginLoading = document.getElementById('admin-login-loading');
   const logoutLink = document.getElementById('logout-link');
+  const welcomeEl = document.getElementById('admin-welcome');
+
+  // Article form elements
   const articleForm = document.getElementById('article-form');
   const articlePage = document.getElementById('article-page');
   const articleTitle = document.getElementById('article-title');
@@ -25,37 +30,72 @@
   const tabs = document.querySelectorAll('.admin-tab');
   const tabContents = document.querySelectorAll('.admin-tab-content');
   const statusMsg = document.getElementById('status-msg');
+  const approvalsList = document.getElementById('approvals-list');
+
+  function setStatus(msg, isError) {
+    if (!statusMsg) return;
+    statusMsg.textContent = msg;
+    statusMsg.style.color = isError ? '#ef4444' : '#22c55e';
+    setTimeout(() => { if (statusMsg) statusMsg.textContent = ''; }, 4000);
+  }
 
   function showTab(tabId) {
     tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
     tabContents.forEach(tc => tc.classList.toggle('active', tc.id === 'tab-' + tabId));
   }
 
-  tabs.forEach(tab => tab.addEventListener('click', () => showTab(tab.dataset.tab)));
+  tabs.forEach(tab => tab.addEventListener('click', () => {
+    showTab(tab.dataset.tab);
+    if (tab.dataset.tab === 'approvals') renderApprovals();
+  }));
 
-  loginBtn.addEventListener('click', () => {
-    if (passwordInput.value === ADMIN_PASSWORD) {
-      overlay.style.display = 'none';
-      panel.style.display = 'block';
-      loginError.textContent = '';
-      passwordInput.value = '';
-      renderArticles();
-    } else {
-      loginError.textContent = 'Incorrect passkey.';
-    }
-  });
-
-  passwordInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') loginBtn.click();
-  });
-
-  logoutLink.addEventListener('click', e => {
-    e.preventDefault();
+  function showOverlay() {
     overlay.style.display = 'flex';
     panel.style.display = 'none';
-    loginError.textContent = '';
+  }
+
+  function showPanel() {
+    overlay.style.display = 'none';
+    panel.style.display = 'block';
+  }
+
+  logoutLink.addEventListener('click', async e => {
+    e.preventDefault();
+    await AUTH.signOut();
   });
 
+  loginBtn.addEventListener('click', () => {
+    AUTH.signIn(window.location.href);
+  });
+
+  async function checkAccess() {
+    const profile = AUTH.getProfile();
+    if (!profile) {
+      loginTitle.textContent = 'SIGN IN REQUIRED';
+      loginDesc.textContent = 'Sign in with Google to continue.';
+      loginBtn.style.display = 'inline-block';
+      loginLoading.style.display = 'none';
+      showOverlay();
+      return;
+    }
+
+    if (!AUTH.isAdmin()) {
+      loginTitle.textContent = 'ACCESS DENIED';
+      loginDesc.textContent = 'Only admins can access this page.';
+      loginBtn.style.display = 'none';
+      loginLoading.style.display = 'none';
+      showOverlay();
+      return;
+    }
+
+    welcomeEl.textContent = 'Logged in as @' + profile.username;
+    showPanel();
+    renderArticles();
+  }
+
+  document.addEventListener('auth-ready', checkAccess);
+
+  // ---- Article image handling ----
   articleImage.addEventListener('change', () => {
     const file = articleImage.files[0];
     if (!file) return;
@@ -74,13 +114,6 @@
     articleImage.value = '';
     imagePreview.style.display = 'none';
   });
-
-  function setStatus(msg, isError) {
-    if (!statusMsg) return;
-    statusMsg.textContent = msg;
-    statusMsg.style.color = isError ? '#ef4444' : '#22c55e';
-    setTimeout(() => { if (statusMsg) statusMsg.textContent = ''; }, 4000);
-  }
 
   async function uploadImage(file) {
     const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '')}`;
@@ -127,7 +160,7 @@
         page,
         image_url: imageUrl || null,
         date: new Date().toISOString(),
-        published: true
+        published: true,
       };
 
       if (editingId) {
@@ -237,10 +270,97 @@
     renderArticles();
   }
 
+  // ---- Photo Approvals ----
+  async function renderApprovals() {
+    approvalsList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem;font-family:var(--font-serif);">Loading...</p>';
+
+    const { data: submissions, error } = await polarisDb
+      .from('submissions')
+      .select('*, profiles!inner(username)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      approvalsList.innerHTML = '<p style="color:#ef4444;text-align:center;padding:2rem;">Failed to load submissions.</p>';
+      return;
+    }
+
+    if (!submissions || !submissions.length) {
+      approvalsList.innerHTML = '<p style="color:var(--muted);text-align:center;padding:2rem;font-family:var(--font-serif);">No pending submissions.</p>';
+      return;
+    }
+
+    approvalsList.innerHTML = submissions.map(s => {
+      const dateStr = new Date(s.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      return `
+        <div class="approval-card" data-id="${s.id}">
+          <div class="approval-img-wrap">
+            <img src="${s.image_url}" alt="Submission" class="approval-img" />
+          </div>
+          <div class="approval-info">
+            <div class="approval-meta">
+              <span class="approval-user">@${s.profiles?.username || 'unknown'}</span>
+              <span class="approval-date">${dateStr}</span>
+            </div>
+            <p class="approval-desc">${s.description || 'No description'}</p>
+            ${s.location ? '<p class="approval-location">📍 ' + s.location + '</p>' : ''}
+            <div class="approval-actions">
+              <button class="admin-btn small approval-approve">APPROVE</button>
+              <button class="admin-btn small danger approval-reject">REJECT</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    approvalsList.querySelectorAll('.approval-approve').forEach(btn => {
+      btn.addEventListener('click', async function () {
+        const card = this.closest('.approval-card');
+        const id = parseInt(card.dataset.id);
+        await reviewSubmission(id, 'approved', card);
+      });
+    });
+
+    approvalsList.querySelectorAll('.approval-reject').forEach(btn => {
+      btn.addEventListener('click', async function () {
+        const card = this.closest('.approval-card');
+        const id = parseInt(card.dataset.id);
+        await reviewSubmission(id, 'rejected', card);
+      });
+    });
+  }
+
+  async function reviewSubmission(id, status, cardEl) {
+    const profile = AUTH.getProfile();
+    if (!profile) return;
+
+    cardEl.style.opacity = '0.5';
+
+    const { error } = await polarisDb
+      .from('submissions')
+      .update({
+        status: status,
+        reviewed_by: profile.id,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+
+    if (error) {
+      cardEl.style.opacity = '1';
+      setStatus('Error: ' + error.message, true);
+      return;
+    }
+
+    cardEl.style.transition = 'opacity 0.3s, transform 0.3s';
+    cardEl.style.opacity = '0';
+    cardEl.style.transform = 'translateX(30px)';
+    setTimeout(() => cardEl.remove(), 300);
+    setStatus('Submission ' + status + '.');
+  }
+
+  // Add status message element
   const statusDiv = document.createElement('div');
   statusDiv.id = 'status-msg';
   statusDiv.style.cssText = 'margin-top:1rem;font-family:var(--font-body);font-size:0.7rem;letter-spacing:0.1em;text-align:center;';
   document.querySelector('.admin-actions')?.appendChild(statusDiv);
-
-  try { renderArticles(); } catch (e) {}
 })();

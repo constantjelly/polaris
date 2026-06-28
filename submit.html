@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POLARIS — Submit a Photo</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <canvas id="stars-canvas"></canvas>
+
+  <nav class="nav" id="main-nav">
+    <div class="nav-logo"><a href="index.html">POLARIS ✦</a></div>
+    <ul class="nav-links">
+      <li><a href="facts.html">SPACE FACTS</a></li>
+      <li><a href="nights.html">STARRY NIGHTS</a></li>
+      <li><a href="exams.html">EXAMS</a></li>
+    </ul>
+  </nav>
+
+  <section class="page-hero">
+    <div class="page-hero-content" style="animation: fadeUp 1s ease 0.2s both;">
+      <span class="page-tag">CONTRIBUTE</span>
+      <h1 class="page-title">SUBMIT A PHOTO</h1>
+      <p class="page-subtitle">Share your night sky captures with the Polaris community.<br />Your submission will be reviewed before publishing.</p>
+    </div>
+  </section>
+
+  <section class="contact-section" id="submit-section">
+    <div id="submit-auth-required" style="text-align:center;padding:3rem;">
+      <p style="color:var(--muted);font-family:var(--font-serif);margin-bottom:1.5rem;">You need to sign in to submit a photo.</p>
+      <button id="submit-login-btn" class="cta-btn">SIGN IN WITH GOOGLE</button>
+    </div>
+
+    <div id="submit-form-container" style="display:none;max-width:600px;margin:0 auto;">
+      <div class="admin-form-group">
+        <label for="submit-image">SKY PHOTO</label>
+        <input type="file" id="submit-image" accept="image/*" required />
+      </div>
+
+      <div id="submit-image-preview" style="display:none;margin-bottom:1.5rem;">
+        <img id="submit-preview-img" style="max-width:100%;max-height:300px;border-radius:4px;border:1px solid var(--border);" />
+        <button type="button" id="submit-remove-image" class="admin-btn small danger" style="margin-top:0.5rem;">REMOVE</button>
+      </div>
+
+      <div class="admin-form-group">
+        <label for="submit-description">DESCRIPTION</label>
+        <textarea id="submit-description" rows="4" placeholder="What are we looking at? Constellation, location, story..." required></textarea>
+      </div>
+
+      <div class="admin-form-group">
+        <label for="submit-location">LOCATION (optional)</label>
+        <input type="text" id="submit-location" placeholder="e.g. Mauna Kea, Hawaii" />
+      </div>
+
+      <div class="admin-actions">
+        <button id="submit-btn" class="admin-btn primary">SUBMIT FOR REVIEW</button>
+        <span id="submit-status" style="display:block;margin-top:0.75rem;font-family:var(--font-body);font-size:0.7rem;letter-spacing:0.1em;text-align:center;"></span>
+      </div>
+    </div>
+
+    <div id="submit-success" style="display:none;text-align:center;padding:3rem;">
+      <p style="color:#22c55e;font-family:var(--font-serif);font-size:1.1rem;margin-bottom:1.5rem;">
+        Photo submitted successfully! It will be reviewed by our team.
+      </p>
+      <a href="profile.html" class="cta-btn">VIEW YOUR PROFILE</a>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="auth.js"></script>
+  <script src="stars.js"></script>
+  <script src="page.js"></script>
+  <script>
+    document.addEventListener('auth-ready', async function () {
+      const user = AUTH.getUser();
+      const authReq = document.getElementById('submit-auth-required');
+      const formContainer = document.getElementById('submit-form-container');
+      const successDiv = document.getElementById('submit-success');
+      const loginBtn = document.getElementById('submit-login-btn');
+      const imageInput = document.getElementById('submit-image');
+      const previewDiv = document.getElementById('submit-image-preview');
+      const previewImg = document.getElementById('submit-preview-img');
+      const removeBtn = document.getElementById('submit-remove-image');
+      const descInput = document.getElementById('submit-description');
+      const locationInput = document.getElementById('submit-location');
+      const submitBtn = document.getElementById('submit-btn');
+      const statusSpan = document.getElementById('submit-status');
+
+      let uploadedBlob = null;
+
+      loginBtn.addEventListener('click', function () {
+        AUTH.signIn(window.location.href);
+      });
+
+      if (!user) {
+        authReq.style.display = 'block';
+        return;
+      }
+
+      authReq.style.display = 'none';
+      formContainer.style.display = 'block';
+
+      imageInput.addEventListener('change', function () {
+        const file = this.files[0];
+        if (!file) return;
+        uploadedBlob = file;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          previewImg.src = e.target.result;
+          previewDiv.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      });
+
+      removeBtn.addEventListener('click', function () {
+        uploadedBlob = null;
+        imageInput.value = '';
+        previewDiv.style.display = 'none';
+      });
+
+      function setStatus(msg, isError) {
+        statusSpan.textContent = msg;
+        statusSpan.style.color = isError ? '#ef4444' : '#22c55e';
+      }
+
+      submitBtn.addEventListener('click', async function () {
+        const file = uploadedBlob;
+        const description = descInput.value.trim();
+        const location = locationInput.value.trim();
+
+        if (!file) {
+          setStatus('Please select an image.', true);
+          return;
+        }
+        if (!description) {
+          setStatus('Please add a description.', true);
+          return;
+        }
+
+        submitBtn.textContent = 'UPLOADING...';
+        submitBtn.disabled = true;
+
+        try {
+          const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '');
+          const { error: uploadErr } = await polarisDb.storage
+            .from('user-submissions')
+            .upload('public/' + fileName, file);
+          if (uploadErr) throw uploadErr;
+
+          const { data: urlData } = polarisDb.storage
+            .from('user-submissions')
+            .getPublicUrl('public/' + fileName);
+          const imageUrl = urlData.publicUrl;
+
+          const { error: insertErr } = await polarisDb
+            .from('submissions')
+            .insert({
+              user_id: user.id,
+              image_url: imageUrl,
+              description: description,
+              location: location || null,
+              status: 'pending',
+            });
+          if (insertErr) throw insertErr;
+
+          formContainer.style.display = 'none';
+          successDiv.style.display = 'block';
+        } catch (err) {
+          setStatus('Error: ' + err.message, true);
+          submitBtn.textContent = 'SUBMIT FOR REVIEW';
+          submitBtn.disabled = false;
+        }
+      });
+    });
+  </script>
+</body>
+</html>

@@ -13,11 +13,13 @@
   <div id="login-overlay">
     <div class="login-modal">
       <div class="login-icon">✦</div>
-      <h2>ADMIN ACCESS</h2>
-      <p>Enter the passkey to continue.</p>
-      <input type="password" id="password-input" placeholder="Passkey" />
-      <button id="login-btn" class="admin-btn">UNLOCK</button>
+      <h2 id="admin-login-title">ADMIN ACCESS</h2>
+      <p id="admin-login-desc">Sign in with your Google account.</p>
+      <button id="admin-login-btn" class="admin-btn">SIGN IN WITH GOOGLE</button>
       <span id="login-error"></span>
+      <div id="admin-login-loading" style="display:none;margin-top:1rem;">
+        <span style="color:var(--muted);font-family:var(--font-serif);">Checking access...</span>
+      </div>
     </div>
   </div>
 
@@ -34,7 +36,7 @@
       <div class="page-hero-content" style="animation: fadeUp 1s ease 0.2s both;">
         <span class="page-tag">CONTROL CENTRE</span>
         <h1 class="page-title">ADMIN PANEL</h1>
-        <p class="page-subtitle">Write articles, upload images, and publish<br />to Space Facts, Starry Nights &amp; Exams pages.</p>
+        <p class="page-subtitle" id="admin-welcome"></p>
       </div>
     </section>
 
@@ -42,6 +44,7 @@
       <div class="admin-tabs">
         <button class="admin-tab active" data-tab="new">NEW ARTICLE</button>
         <button class="admin-tab" data-tab="manage">MANAGE ARTICLES</button>
+        <button class="admin-tab" data-tab="approvals">PHOTO APPROVALS</button>
       </div>
 
       <div id="tab-new" class="admin-tab-content active">
@@ -91,11 +94,21 @@
         </div>
         <div id="articles-list"></div>
       </div>
+
+      <div id="tab-approvals" class="admin-tab-content">
+        <p style="font-family:var(--font-serif);color:var(--muted);margin-bottom:1.5rem;">
+          Review and approve user-submitted sky photos.
+        </p>
+        <div id="approvals-list">
+          <p style="color:var(--muted);text-align:center;padding:2rem;font-family:var(--font-serif);">Loading...</p>
+        </div>
+      </div>
     </section>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="supabase-config.js"></script>
+  <script src="auth.js"></script>
   <script src="stars.js"></script>
   <script src="admin.js"></script>
 </body>

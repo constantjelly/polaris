@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POLARIS — Join</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="stars-canvas"></canvas>
+
+  <nav class="nav" id="main-nav">
+    <div class="nav-logo"><a href="index.html">POLARIS ✦</a></div>
+  </nav>
+
+  <section class="page-hero" style="min-height:80vh;">
+    <div class="page-hero-content" style="animation: fadeUp 1s ease 0.2s both;">
+      <span class="page-tag">WELCOME</span>
+      <h1 class="page-title">JOIN POLARIS</h1>
+      <p class="page-subtitle">Choose a username to get started.</p>
+
+      <div id="join-flow" style="margin-top:3rem;max-width:400px;margin-left:auto;margin-right:auto;">
+        <div id="join-loading" style="color:var(--muted);font-family:var(--font-serif);">Checking your session...</div>
+
+        <div id="join-signin" style="display:none;">
+          <p style="color:var(--muted);margin-bottom:2rem;font-family:var(--font-serif);">
+            Sign in with Google to create your Polaris profile.
+          </p>
+          <button id="join-google-btn" class="cta-btn" style="width:100%;">SIGN IN WITH GOOGLE</button>
+        </div>
+
+        <div id="join-form" style="display:none;">
+          <div class="form-group" style="margin-bottom:1.5rem;">
+            <label for="join-username">USERNAME</label>
+            <input type="text" id="join-username" placeholder="e.g. star_gazer42" maxlength="30" pattern="[a-zA-Z0-9_]+" required />
+            <span id="join-username-status" style="font-size:0.7rem;margin-top:0.3rem;display:block;color:var(--muted);font-family:var(--font-body);"></span>
+          </div>
+          <button id="join-submit-btn" class="cta-btn" style="width:100%;" disabled>SET USERNAME</button>
+          <span id="join-error" style="display:block;color:#ef4444;font-size:0.75rem;margin-top:0.75rem;font-family:var(--font-body);"></span>
+        </div>
+
+        <div id="join-success" style="display:none;">
+          <p style="color:#22c55e;font-family:var(--font-serif);font-size:1.1rem;">
+            Profile set up successfully!
+          </p>
+          <a href="index.html" class="cta-btn" style="margin-top:1.5rem;">GO TO HOME</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="stars.js"></script>
+  <script>
+    (async function () {
+      await polarisDb.auth.getSession();
+
+      const flow = document.getElementById('join-flow');
+      const loading = document.getElementById('join-loading');
+      const signinDiv = document.getElementById('join-signin');
+      const formDiv = document.getElementById('join-form');
+      const successDiv = document.getElementById('join-success');
+      const googleBtn = document.getElementById('join-google-btn');
+      const usernameInput = document.getElementById('join-username');
+      const usernameStatus = document.getElementById('join-username-status');
+      const submitBtn = document.getElementById('join-submit-btn');
+      const errorSpan = document.getElementById('join-error');
+
+      function show(el) { el.style.display = 'block'; }
+      function hide(el) { el.style.display = 'none'; }
+
+      const params = new URLSearchParams(window.location.search);
+      const redirectTo = params.get('redirect') || 'index.html';
+
+      googleBtn.addEventListener('click', async function () {
+        const { error } = await polarisDb.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin + '/join.html' + (redirectTo !== 'index.html' ? '?redirect=' + encodeURIComponent(redirectTo) : ''),
+          },
+        });
+        if (error) {
+          errorSpan.textContent = error.message;
+          show(errorSpan);
+        }
+      });
+
+      let usernameTimer = null;
+      usernameInput.addEventListener('input', function () {
+        clearTimeout(usernameTimer);
+        const val = this.value.trim();
+        if (!val) {
+          usernameStatus.textContent = '';
+          submitBtn.disabled = true;
+          return;
+        }
+        if (!/^[a-zA-Z0-9_]+$/.test(val)) {
+          usernameStatus.textContent = 'Only letters, numbers, and underscores.';
+          usernameStatus.style.color = '#ef4444';
+          submitBtn.disabled = true;
+          return;
+        }
+        if (val.length < 3) {
+          usernameStatus.textContent = 'At least 3 characters.';
+          usernameStatus.style.color = 'var(--muted)';
+          submitBtn.disabled = true;
+          return;
+        }
+        usernameStatus.textContent = 'Checking...';
+        usernameStatus.style.color = 'var(--muted)';
+        submitBtn.disabled = true;
+
+        usernameTimer = setTimeout(async function () {
+          try {
+            const available = await AUTH.checkUsername(val);
+            if (val !== usernameInput.value.trim()) return;
+            if (available) {
+              usernameStatus.textContent = 'Available!';
+              usernameStatus.style.color = '#22c55e';
+              submitBtn.disabled = false;
+            } else {
+              usernameStatus.textContent = 'Taken — try another.';
+              usernameStatus.style.color = '#ef4444';
+              submitBtn.disabled = true;
+            }
+          } catch {
+            usernameStatus.textContent = 'Error checking availability.';
+            usernameStatus.style.color = '#ef4444';
+          }
+        }, 400);
+      });
+
+      async function ensureProfile() {
+        const user = AUTH.getUser();
+        if (!user) throw new Error('Not authenticated');
+        const { data } = await polarisDb.from('profiles').select('id').eq('id', user.id).maybeSingle();
+        if (!data) {
+          const { error } = await polarisDb.from('profiles').insert({ id: user.id });
+          if (error) throw error;
+        }
+      }
+
+      submitBtn.addEventListener('click', async function () {
+        const username = usernameInput.value.trim().toLowerCase();
+        if (!username || submitBtn.disabled) return;
+        submitBtn.textContent = 'SAVING...';
+        submitBtn.disabled = true;
+        try {
+          await ensureProfile();
+          await AUTH.setUsername(username);
+          hide(formDiv);
+          show(successDiv);
+          if (redirectTo !== 'index.html') {
+            setTimeout(function () { window.location.href = redirectTo; }, 1500);
+          }
+        } catch (err) {
+          errorSpan.textContent = err.message || 'Failed to set username.';
+          show(errorSpan);
+          submitBtn.textContent = 'SET USERNAME';
+          submitBtn.disabled = false;
+        }
+      });
+
+      async function checkState() {
+        const { data: { session } } = await polarisDb.auth.getSession();
+
+        if (!session) {
+          hide(loading);
+          show(signinDiv);
+          return;
+        }
+
+        const user = session.user;
+        try {
+          const { data: profile } = await polarisDb
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+          if (profile && profile.username) {
+            hide(loading);
+            show(successDiv);
+            successDiv.querySelector('p').textContent = 'You already have a profile, ' + profile.username + '!';
+            setTimeout(function () { window.location.href = redirectTo; }, 1000);
+            return;
+          }
+
+          hide(loading);
+          show(formDiv);
+        } catch {
+          hide(loading);
+          show(formDiv);
+        }
+      }
+
+      document.addEventListener('auth-ready', checkState);
+      if (window.AUTH) checkState();
+    })();
+  </script>
+</body>
+</html>
