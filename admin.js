@@ -276,7 +276,7 @@
 
     const { data: submissions, error } = await polarisDb
       .from('submissions')
-      .select('*, profiles!inner(username)')
+      .select('*, profiles!submissions_user_id_fkey(username)')
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 

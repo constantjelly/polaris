@@ -77,7 +77,7 @@
 
       const { data: submissions, error } = await polarisDb
         .from('submissions')
-        .select('*, profiles!inner(username, is_admin)')
+        .select('*, profiles!submissions_user_id_fkey(username, is_admin)')
         .eq('status', 'approved')
         .order('created_at', { ascending: false })
         .limit(40);
