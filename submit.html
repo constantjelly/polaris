@@ -156,13 +156,10 @@
           const imageUrl = urlData.publicUrl;
 
           const { error: insertErr } = await polarisDb
-            .from('submissions')
-            .insert({
-              user_id: user.id,
-              image_url: imageUrl,
-              description: description,
-              location: location || null,
-              status: 'pending',
+            .rpc('create_submission', {
+              p_image_url: imageUrl,
+              p_description: description,
+              p_location: location || null,
             });
           if (insertErr) throw insertErr;
 

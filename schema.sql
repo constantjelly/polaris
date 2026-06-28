@@ -104,12 +104,38 @@ CREATE POLICY "Users can delete their own pending submissions"
   ON submissions FOR DELETE
   USING ((SELECT auth.uid()) = user_id AND status = 'pending');
 
--- 8. How to make yourself an admin:
+-- 8. Helper function — inserts a submission bypassing RLS (SECURITY DEFINER)
+--    This is used by submit.html to avoid RLS auth.uid() issues.
+CREATE OR REPLACE FUNCTION public.create_submission(
+  p_image_url TEXT,
+  p_description TEXT,
+  p_location TEXT DEFAULT NULL
+) RETURNS BIGINT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_id BIGINT;
+BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+  INSERT INTO public.submissions (user_id, image_url, description, location, status)
+  VALUES (v_user_id, p_image_url, p_description, p_location, 'pending')
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$;
+
+-- 10. How to make yourself an admin:
 -- After signing in with Google once, find your user ID in Supabase Auth > Users,
 -- then run:
 -- UPDATE profiles SET is_admin = true WHERE id = 'your-user-uuid';
 
--- 9. Enable Google Auth:
+-- 11. Enable Google Auth:
 -- Go to Supabase Dashboard > Authentication > Providers > Google
 -- Enable it and add your Google Cloud OAuth credentials.
 -- Also set Site URL to your Vercel domain and add redirect URLs:
