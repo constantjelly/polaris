@@ -61,7 +61,7 @@ CREATE POLICY "Profiles are publicly readable"
 DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
 CREATE POLICY "Users can update their own profile"
   ON profiles FOR UPDATE
-  USING (auth.uid() = id);
+  USING ((SELECT auth.uid()) = id);
 
 -- 7. RLS Policies for submissions
 DROP POLICY IF EXISTS "Anyone can read approved submissions" ON submissions;
@@ -78,25 +78,31 @@ DROP POLICY IF EXISTS "Admins can read all submissions" ON submissions;
 CREATE POLICY "Admins can read all submissions"
   ON submissions FOR SELECT
   USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = true)
+    EXISTS (SELECT 1 FROM profiles WHERE id = (SELECT auth.uid()) AND is_admin = true)
   );
 
 DROP POLICY IF EXISTS "Users can create submissions" ON submissions;
 CREATE POLICY "Users can create submissions"
   ON submissions FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((SELECT auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can update their own pending submissions" ON submissions;
 CREATE POLICY "Users can update their own pending submissions"
   ON submissions FOR UPDATE
-  USING (auth.uid() = user_id AND status = 'pending');
+  USING ((SELECT auth.uid()) = user_id AND status = 'pending');
 
 DROP POLICY IF EXISTS "Admins can update any submission" ON submissions;
 CREATE POLICY "Admins can update any submission"
   ON submissions FOR UPDATE
   USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = true)
+    EXISTS (SELECT 1 FROM profiles WHERE id = (SELECT auth.uid()) AND is_admin = true)
   );
+
+-- Users can delete their own pending submissions
+DROP POLICY IF EXISTS "Users can delete their own pending submissions" ON submissions;
+CREATE POLICY "Users can delete their own pending submissions"
+  ON submissions FOR DELETE
+  USING ((SELECT auth.uid()) = user_id AND status = 'pending');
 
 -- 8. How to make yourself an admin:
 -- After signing in with Google once, find your user ID in Supabase Auth > Users,
