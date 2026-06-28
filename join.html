@@ -51,45 +51,40 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="supabase-config.js"></script>
+  <script src="auth.js"></script>
   <script src="stars.js"></script>
   <script>
-    (async function () {
-      await polarisDb.auth.getSession();
-
-      const flow = document.getElementById('join-flow');
-      const loading = document.getElementById('join-loading');
-      const signinDiv = document.getElementById('join-signin');
-      const formDiv = document.getElementById('join-form');
-      const successDiv = document.getElementById('join-success');
-      const googleBtn = document.getElementById('join-google-btn');
-      const usernameInput = document.getElementById('join-username');
-      const usernameStatus = document.getElementById('join-username-status');
-      const submitBtn = document.getElementById('join-submit-btn');
-      const errorSpan = document.getElementById('join-error');
+    (function () {
+      var flow = document.getElementById('join-flow');
+      var loading = document.getElementById('join-loading');
+      var signinDiv = document.getElementById('join-signin');
+      var formDiv = document.getElementById('join-form');
+      var successDiv = document.getElementById('join-success');
+      var googleBtn = document.getElementById('join-google-btn');
+      var usernameInput = document.getElementById('join-username');
+      var usernameStatus = document.getElementById('join-username-status');
+      var submitBtn = document.getElementById('join-submit-btn');
+      var errorSpan = document.getElementById('join-error');
 
       function show(el) { el.style.display = 'block'; }
       function hide(el) { el.style.display = 'none'; }
 
-      const params = new URLSearchParams(window.location.search);
-      const redirectTo = params.get('redirect') || 'index.html';
+      var params = new URLSearchParams(window.location.search);
+      var redirectTo = params.get('redirect') || 'index.html';
 
-      googleBtn.addEventListener('click', async function () {
-        const { error } = await polarisDb.auth.signInWithOAuth({
+      googleBtn.addEventListener('click', function () {
+        polarisDb.auth.signInWithOAuth({
           provider: 'google',
           options: {
             redirectTo: window.location.origin + '/join.html' + (redirectTo !== 'index.html' ? '?redirect=' + encodeURIComponent(redirectTo) : ''),
           },
         });
-        if (error) {
-          errorSpan.textContent = error.message;
-          show(errorSpan);
-        }
       });
 
-      let usernameTimer = null;
+      var usernameTimer = null;
       usernameInput.addEventListener('input', function () {
         clearTimeout(usernameTimer);
-        const val = this.value.trim();
+        var val = this.value.trim();
         if (!val) {
           usernameStatus.textContent = '';
           submitBtn.disabled = true;
@@ -113,7 +108,8 @@
 
         usernameTimer = setTimeout(async function () {
           try {
-            const available = await AUTH.checkUsername(val);
+            var res = await polarisDb.from('profiles').select('id').eq('username', val.toLowerCase()).maybeSingle();
+            var available = !res.data;
             if (val !== usernameInput.value.trim()) return;
             if (available) {
               usernameStatus.textContent = 'Available!';
@@ -131,24 +127,31 @@
         }, 400);
       });
 
+      var currentUserId = null;
+
       async function ensureProfile() {
-        const user = AUTH.getUser();
-        if (!user) throw new Error('Not authenticated');
-        const { data } = await polarisDb.from('profiles').select('id').eq('id', user.id).maybeSingle();
-        if (!data) {
-          const { error } = await polarisDb.from('profiles').insert({ id: user.id });
-          if (error) throw error;
+        if (!currentUserId) throw new Error('Not authenticated');
+        var data = await polarisDb.from('profiles').select('id').eq('id', currentUserId).maybeSingle();
+        if (!data.data) {
+          var err = await polarisDb.from('profiles').insert({ id: currentUserId });
+          if (err.error) throw err.error;
         }
       }
 
+      async function setUsername(username) {
+        if (!currentUserId) throw new Error('Not authenticated');
+        var err = await polarisDb.from('profiles').update({ username: username.toLowerCase() }).eq('id', currentUserId);
+        if (err.error) throw err.error;
+      }
+
       submitBtn.addEventListener('click', async function () {
-        const username = usernameInput.value.trim().toLowerCase();
+        var username = usernameInput.value.trim().toLowerCase();
         if (!username || submitBtn.disabled) return;
         submitBtn.textContent = 'SAVING...';
         submitBtn.disabled = true;
         try {
           await ensureProfile();
-          await AUTH.setUsername(username);
+          await setUsername(username);
           hide(formDiv);
           show(successDiv);
           if (redirectTo !== 'index.html') {
@@ -163,7 +166,8 @@
       });
 
       async function checkState() {
-        const { data: { session } } = await polarisDb.auth.getSession();
+        var result = await polarisDb.auth.getSession();
+        var session = result.data.session;
 
         if (!session) {
           hide(loading);
@@ -171,32 +175,46 @@
           return;
         }
 
-        const user = session.user;
+        currentUserId = session.user.id;
+
         try {
-          const { data: profile } = await polarisDb
+          var profileRes = await polarisDb
             .from('profiles')
             .select('*')
-            .eq('id', user.id)
+            .eq('id', session.user.id)
             .single();
+          var profile = profileRes.data;
 
           if (profile && profile.username) {
             hide(loading);
             show(successDiv);
-            successDiv.querySelector('p').textContent = 'You already have a profile, ' + profile.username + '!';
+            successDiv.querySelector('p').textContent = 'You already have a profile, @' + profile.username + '!';
             setTimeout(function () { window.location.href = redirectTo; }, 1000);
             return;
           }
 
+          if (!profile) {
+            var insertRes = await polarisDb.from('profiles').insert({ id: session.user.id });
+            if (insertRes.error) throw insertRes.error;
+          }
+
           hide(loading);
           show(formDiv);
-        } catch {
+        } catch (err) {
           hide(loading);
           show(formDiv);
         }
       }
 
-      document.addEventListener('auth-ready', checkState);
-      if (window.AUTH) checkState();
+      var pollTimer = setInterval(async function () {
+        var result = await polarisDb.auth.getSession();
+        if (result.data.session) {
+          clearInterval(pollTimer);
+          checkState();
+        }
+      }, 300);
+
+      setTimeout(function () { clearInterval(pollTimer); }, 10000);
     })();
   </script>
 </body>
