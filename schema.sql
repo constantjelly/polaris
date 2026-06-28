@@ -61,9 +61,11 @@ CREATE POLICY "Profiles are publicly readable"
 DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
 CREATE POLICY "Users can update their own profile"
   ON profiles FOR UPDATE
-  USING ((SELECT auth.uid()) = id);
+  USING ((current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid = id);
 
 -- 7. RLS Policies for submissions
+-- NOTE: auth.uid() can be unreliable in static-site contexts, so we use
+--       current_setting('request.jwt.claims') to read the JWT directly.
 DROP POLICY IF EXISTS "Anyone can read approved submissions" ON submissions;
 CREATE POLICY "Anyone can read approved submissions"
   ON submissions FOR SELECT
@@ -72,70 +74,62 @@ CREATE POLICY "Anyone can read approved submissions"
 DROP POLICY IF EXISTS "Users can read their own submissions" ON submissions;
 CREATE POLICY "Users can read their own submissions"
   ON submissions FOR SELECT
-  USING (auth.uid() = user_id);
+  USING (
+    (current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid = user_id
+  );
 
 DROP POLICY IF EXISTS "Admins can read all submissions" ON submissions;
 CREATE POLICY "Admins can read all submissions"
   ON submissions FOR SELECT
   USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = (SELECT auth.uid()) AND is_admin = true)
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = (current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid
+        AND is_admin = true
+    )
   );
 
 DROP POLICY IF EXISTS "Users can create submissions" ON submissions;
 CREATE POLICY "Users can create submissions"
   ON submissions FOR INSERT
-  WITH CHECK ((SELECT auth.uid()) = user_id);
+  WITH CHECK (
+    (current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid = user_id
+  );
 
 DROP POLICY IF EXISTS "Users can update their own pending submissions" ON submissions;
 CREATE POLICY "Users can update their own pending submissions"
   ON submissions FOR UPDATE
-  USING ((SELECT auth.uid()) = user_id AND status = 'pending');
+  USING (
+    (current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid = user_id
+    AND status = 'pending'
+  );
 
 DROP POLICY IF EXISTS "Admins can update any submission" ON submissions;
 CREATE POLICY "Admins can update any submission"
   ON submissions FOR UPDATE
   USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = (SELECT auth.uid()) AND is_admin = true)
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = (current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid
+        AND is_admin = true
+    )
   );
 
 -- Users can delete their own pending submissions
 DROP POLICY IF EXISTS "Users can delete their own pending submissions" ON submissions;
 CREATE POLICY "Users can delete their own pending submissions"
   ON submissions FOR DELETE
-  USING ((SELECT auth.uid()) = user_id AND status = 'pending');
+  USING (
+    (current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid = user_id
+    AND status = 'pending'
+  );
 
--- 8. Helper function — inserts a submission bypassing RLS (SECURITY DEFINER)
---    This is used by submit.html to avoid RLS auth.uid() issues.
-CREATE OR REPLACE FUNCTION public.create_submission(
-  p_image_url TEXT,
-  p_description TEXT,
-  p_location TEXT DEFAULT NULL
-) RETURNS BIGINT
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-DECLARE
-  v_user_id UUID;
-  v_id BIGINT;
-BEGIN
-  v_user_id := auth.uid();
-  IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'Not authenticated';
-  END IF;
-  INSERT INTO public.submissions (user_id, image_url, description, location, status)
-  VALUES (v_user_id, p_image_url, p_description, p_location, 'pending')
-  RETURNING id INTO v_id;
-  RETURN v_id;
-END;
-$$;
-
--- 10. How to make yourself an admin:
+-- 8. How to make yourself an admin:
 -- After signing in with Google once, find your user ID in Supabase Auth > Users,
 -- then run:
 -- UPDATE profiles SET is_admin = true WHERE id = 'your-user-uuid';
 
--- 11. Enable Google Auth:
+-- 9. Enable Google Auth:
 -- Go to Supabase Dashboard > Authentication > Providers > Google
 -- Enable it and add your Google Cloud OAuth credentials.
 -- Also set Site URL to your Vercel domain and add redirect URLs:
