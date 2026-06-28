@@ -145,14 +145,15 @@
 
         try {
           const fileName = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '');
+          const objectPath = user.id + '/' + fileName;
           const { error: uploadErr } = await polarisDb.storage
             .from('user-submissions')
-            .upload('public/' + fileName, file);
+            .upload(objectPath, file);
           if (uploadErr) throw uploadErr;
 
           const { data: urlData } = polarisDb.storage
             .from('user-submissions')
-            .getPublicUrl('public/' + fileName);
+            .getPublicUrl(objectPath);
           const imageUrl = urlData.publicUrl;
 
           const { error: insertErr } = await polarisDb

@@ -48,6 +48,20 @@ CREATE TRIGGER on_auth_user_created
 INSERT INTO storage.buckets (id, name, public) VALUES ('user-submissions', 'user-submissions', true)
 ON CONFLICT (id) DO NOTHING;
 
+-- Public buckets are readable, but uploads still need storage.objects RLS.
+DROP POLICY IF EXISTS "Anyone can read user submission files" ON storage.objects;
+CREATE POLICY "Anyone can read user submission files"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'user-submissions');
+
+DROP POLICY IF EXISTS "Users can upload their own submission files" ON storage.objects;
+CREATE POLICY "Users can upload their own submission files"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'user-submissions'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+  );
+
 -- 5. Enable Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
