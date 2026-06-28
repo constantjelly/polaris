@@ -77,10 +77,10 @@
 
       const { data: submissions, error } = await polarisDb
         .from('submissions')
-        .select('*, profiles!inner(username)')
+        .select('*, profiles!inner(username, is_admin)')
         .eq('status', 'approved')
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(40);
 
       if (error || !submissions || !submissions.length) {
         empty.style.display = 'block';
@@ -88,14 +88,21 @@
         return;
       }
 
+      submissions.sort(function (a, b) {
+        if (a.profiles?.is_admin && !b.profiles?.is_admin) return -1;
+        if (!a.profiles?.is_admin && b.profiles?.is_admin) return 1;
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+
       grid.innerHTML = submissions.map(function (s) {
         const dateStr = new Date(s.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        const adminBadge = s.profiles?.is_admin ? ' <span class="admin-badge small">ADMIN</span>' : '';
         return '<div class="submission-card">' +
           '<a href="profile.html?username=' + encodeURIComponent(s.profiles?.username || '') + '" class="submission-img-wrap" style="display:block;">' +
             '<img src="' + s.image_url + '" alt="Sky photo" class="submission-img" loading="lazy" />' +
           '</a>' +
           '<div class="submission-info">' +
-            '<div class="submission-meta">' + dateStr + ' &middot; by @' + (s.profiles?.username || 'unknown') + (s.location ? ' &middot; ' + s.location : '') + '</div>' +
+            '<div class="submission-meta">' + dateStr + ' &middot; by @' + (s.profiles?.username || 'unknown') + adminBadge + (s.location ? ' &middot; ' + s.location : '') + '</div>' +
             '<p class="submission-desc">' + (s.description || '') + '</p>' +
           '</div>' +
         '</div>';

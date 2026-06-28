@@ -1105,3 +1105,28 @@ footer {
     aspect-ratio: 16 / 10;
   }
 }
+
+/* ===================== ADMIN BADGE ===================== */
+.admin-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  letter-spacing: 0.15em;
+  font-weight: 600;
+  color: var(--sun-glow);
+  border: 1px solid rgba(244,131,10,0.4);
+  vertical-align: middle;
+  margin-left: 0.4rem;
+}
+
+.admin-badge.small {
+  font-size: 0.45rem;
+  padding: 0.1rem 0.35rem;
+  margin-left: 0.25rem;
+}
+
+.status-badge + .admin-badge {
+  margin-left: 0.4rem;
+}

@@ -85,8 +85,10 @@
         return;
       }
 
-      usernameEl.textContent = profile.display_name || profile.username.toUpperCase();
-      tagEl.textContent = '@' + profile.username;
+      var displayName = profile.display_name || profile.username.toUpperCase();
+      var adminBadge = profile.is_admin ? ' <span class="admin-badge">ADMIN</span>' : '';
+      usernameEl.innerHTML = displayName + adminBadge;
+      tagEl.textContent = '@' + profile.username + (profile.is_admin ? ' ✦ ADMIN' : '');
       const joined = new Date(profile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
       metaEl.textContent = 'Joined ' + joined;
 
