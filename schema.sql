@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS article_submissions (
   title TEXT NOT NULL,
   content TEXT NOT NULL,
   page TEXT NOT NULL CHECK (page IN ('facts', 'nights', 'exams')),
+  image_url TEXT,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   created_at TIMESTAMPTZ DEFAULT now(),
   reviewed_at TIMESTAMPTZ

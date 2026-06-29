@@ -53,6 +53,13 @@
         <textarea id="article-content" rows="10" placeholder="Write your article here..." required></textarea>
       </div>
 
+      <div class="admin-form-group">
+        <label for="article-image">ARTICLE IMAGE (optional)</label>
+        <input type="file" id="article-image" accept="image/*" />
+        <img id="article-image-preview" style="display:none;max-width:100%;margin-top:0.75rem;border-radius:8px;" />
+        <p style="color:var(--muted);font-size:0.65rem;letter-spacing:0.05em;margin-top:0.5rem;">Recommended: 1200x630px, under 5 MB</p>
+      </div>
+
       <div class="admin-actions" style="text-align:center;">
         <button id="article-submit-btn" class="admin-btn primary">SUBMIT FOR REVIEW</button>
         <span id="article-submit-status" style="display:block;margin-top:0.75rem;font-family:var(--font-body);font-size:0.7rem;letter-spacing:0.1em;text-align:center;"></span>
@@ -82,8 +89,21 @@
       const pageInput = document.getElementById('article-page');
       const titleInput = document.getElementById('article-title');
       const contentInput = document.getElementById('article-content');
+      const imageInput = document.getElementById('article-image');
+      const imagePreview = document.getElementById('article-image-preview');
       const submitBtn = document.getElementById('article-submit-btn');
       const statusSpan = document.getElementById('article-submit-status');
+
+      imageInput.addEventListener('change', function () {
+        if (this.files && this.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            imagePreview.src = e.target.result;
+            imagePreview.style.display = 'block';
+          };
+          reader.readAsDataURL(this.files[0]);
+        }
+      });
 
       loginBtn.addEventListener('click', function () {
         AUTH.signIn(window.location.href);
@@ -120,6 +140,24 @@
         submitBtn.disabled = true;
 
         try {
+          let image_url = null;
+
+          if (imageInput.files && imageInput.files[0]) {
+            const file = imageInput.files[0];
+            const fileName = Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const filePath = user.id + '/' + fileName;
+
+            const { error: uploadError } = await polarisDb.storage
+              .from('user-submissions')
+              .upload(filePath, file);
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = polarisDb.storage
+              .from('user-submissions')
+              .getPublicUrl(filePath);
+            image_url = urlData.publicUrl;
+          }
+
           const { error } = await polarisDb
             .from('article_submissions')
             .insert({
@@ -127,6 +165,7 @@
               title: title,
               content: content,
               page: page,
+              image_url: image_url,
               status: 'pending',
             });
           if (error) throw error;

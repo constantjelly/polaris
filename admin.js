@@ -462,6 +462,7 @@
               <span class="approval-date">${dateStr}</span>
               <span class="approval-date">${pageLabels[a.page] || a.page}</span>
             </div>
+            ${a.image_url ? `<img src="${a.image_url}" alt="" style="max-width:100%;max-height:200px;border-radius:6px;margin-bottom:0.5rem;object-fit:cover;" />` : ''}
             <h3 style="font-family:var(--font-display);letter-spacing:0.1em;margin:0.4rem 0;">${a.title}</h3>
             <p class="approval-desc">${a.content.replace(/\n/g, '<br/>')}</p>
             <div class="approval-actions">
@@ -512,7 +513,7 @@
           title: submission.title,
           content: submission.content,
           page: submission.page,
-          image_url: null,
+          image_url: submission.image_url || null,
           date: new Date().toISOString(),
           published: true,
         });
