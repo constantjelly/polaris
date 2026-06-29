@@ -199,12 +199,62 @@ CREATE POLICY "Admins can update article submissions"
     )
   );
 
--- 9. How to make yourself an admin:
+-- 9. RLS Policies for articles
+DROP POLICY IF EXISTS "Anyone can read published articles" ON articles;
+CREATE POLICY "Anyone can read published articles"
+  ON articles FOR SELECT
+  USING (published = true);
+
+DROP POLICY IF EXISTS "Admins can read all articles" ON articles;
+CREATE POLICY "Admins can read all articles"
+  ON articles FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = (current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid
+        AND is_admin = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins can insert articles" ON articles;
+CREATE POLICY "Admins can insert articles"
+  ON articles FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = (current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid
+        AND is_admin = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins can update articles" ON articles;
+CREATE POLICY "Admins can update articles"
+  ON articles FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = (current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid
+        AND is_admin = true
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins can delete articles" ON articles;
+CREATE POLICY "Admins can delete articles"
+  ON articles FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = (current_setting('request.jwt.claims', true)::json ->> 'sub')::uuid
+        AND is_admin = true
+    )
+  );
+
+-- 10. How to make yourself an admin:
 -- After signing in with Google once, find your user ID in Supabase Auth > Users,
 -- then run:
 -- UPDATE profiles SET is_admin = true WHERE id = 'your-user-uuid';
 
--- 10. Enable Google Auth:
+-- 11. Enable Google Auth:
 -- Go to Supabase Dashboard > Authentication > Providers > Google
 -- Enable it and add your Google Cloud OAuth credentials.
 -- Also set Site URL to your Vercel domain and add redirect URLs:
