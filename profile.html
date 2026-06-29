@@ -47,6 +47,10 @@
     </div>
   </section>
 
+  <div id="lightbox" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);justify-content:center;align-items:center;cursor:zoom-out;" onclick="this.style.display='none'">
+    <img id="lightbox-img" src="" alt="" style="max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 4px 40px rgba(0,0,0,0.6);" />
+  </div>
+
   <footer>
     <div class="footer-logo">POLARIS ✦</div>
     <div class="footer-copy">&copy; 2026 POLARIS. ALL RIGHTS RESERVED.</div>
@@ -129,6 +133,11 @@
         return;
       }
 
+      function openLightbox(src) {
+        document.getElementById('lightbox-img').src = src;
+        document.getElementById('lightbox').style.display = 'flex';
+      }
+
       grid.innerHTML = visibleSubs.map(function (s) {
         const statusBadge = isOwnProfile
           ? '<span class="status-badge status-' + s.status + '">' + s.status.toUpperCase() + '</span>'
@@ -137,7 +146,7 @@
         return '' +
           '<div class="submission-card">' +
             '<div class="submission-img-wrap">' +
-              '<img src="' + s.image_url + '" alt="Sky photo" class="submission-img" loading="lazy" />' +
+              '<img src="' + s.image_url + '" alt="Sky photo" class="submission-img" loading="lazy" onclick="openLightbox(\'' + s.image_url + '\')" style="cursor:pointer;" />' +
             '</div>' +
             '<div class="submission-info">' +
               '<div class="submission-meta">' + dateStr + ' &middot; ' + (s.location || 'Unknown location') + '</div>' +
