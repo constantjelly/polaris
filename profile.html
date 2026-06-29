@@ -35,9 +35,15 @@
     </div>
 
     <div id="profile-submissions">
-      <h2 style="font-family:var(--font-display);font-size:clamp(1.2rem,2vw,1.5rem);letter-spacing:0.15em;margin-bottom:1.5rem;text-align:center;">SUBMISSIONS</h2>
+      <h2 style="font-family:var(--font-display);font-size:clamp(1.2rem,2vw,1.5rem);letter-spacing:0.15em;margin-bottom:1.5rem;text-align:center;">PHOTO SUBMISSIONS</h2>
       <div id="submissions-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.5rem;"></div>
       <div id="submissions-empty" style="display:none;text-align:center;padding:3rem;color:var(--muted);font-family:var(--font-serif);"></div>
+    </div>
+
+    <div id="profile-articles" style="margin-top:3rem;">
+      <h2 style="font-family:var(--font-display);font-size:clamp(1.2rem,2vw,1.5rem);letter-spacing:0.15em;margin-bottom:1.5rem;text-align:center;">ARTICLE SUBMISSIONS</h2>
+      <div id="articles-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.5rem;"></div>
+      <div id="articles-empty" style="display:none;text-align:center;padding:3rem;color:var(--muted);font-family:var(--font-serif);"></div>
     </div>
   </section>
 
@@ -136,6 +142,49 @@
             '<div class="submission-info">' +
               '<div class="submission-meta">' + dateStr + ' &middot; ' + (s.location || 'Unknown location') + '</div>' +
               '<p class="submission-desc">' + (s.description || '') + '</p>' +
+              statusBadge +
+            '</div>' +
+          '</div>';
+      }).join('');
+
+      const { data: articles, error: artErr } = await polarisDb
+        .from('article_submissions')
+        .select('*')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false });
+
+      const artGrid = document.getElementById('articles-grid');
+      const artEmpty = document.getElementById('articles-empty');
+
+      if (artErr || !articles || !articles.length) {
+        artEmpty.style.display = 'block';
+        artEmpty.textContent = 'No articles submitted yet.';
+        return;
+      }
+
+      const visibleArts = isOwnProfile ? articles : articles.filter(a => a.status === 'approved');
+      if (!visibleArts.length) {
+        artEmpty.style.display = 'block';
+        artEmpty.textContent = isOwnProfile ? 'No articles submitted yet.' : 'No approved articles yet.';
+        return;
+      }
+
+      const pageLabels = { facts: 'Space Facts', nights: 'Starry Nights', exams: 'Exams & Scholarships' };
+      artGrid.innerHTML = visibleArts.map(function (a) {
+        const statusBadge = isOwnProfile
+          ? '<span class="status-badge status-' + a.status + '">' + a.status.toUpperCase() + '</span>'
+          : '';
+        const dateStr = new Date(a.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        const imgBlock = a.image_url
+          ? '<img src="' + a.image_url + '" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:6px;margin-bottom:0.5rem;" loading="lazy" />'
+          : '';
+        return '' +
+          '<div class="submission-card">' +
+            '<div class="submission-info">' +
+              imgBlock +
+              '<div class="submission-meta">' + dateStr + ' &middot; ' + (pageLabels[a.page] || a.page) + '</div>' +
+              '<h3 style="font-family:var(--font-display);font-size:0.85rem;letter-spacing:0.1em;margin:0.25rem 0;">' + a.title + '</h3>' +
+              '<p class="submission-desc">' + a.content.substring(0, 150) + (a.content.length > 150 ? '...' : '') + '</p>' +
               statusBadge +
             '</div>' +
           '</div>';
