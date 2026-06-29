@@ -133,11 +133,6 @@
         return;
       }
 
-      function openLightbox(src) {
-        document.getElementById('lightbox-img').src = src;
-        document.getElementById('lightbox').style.display = 'flex';
-      }
-
       grid.innerHTML = visibleSubs.map(function (s) {
         const statusBadge = isOwnProfile
           ? '<span class="status-badge status-' + s.status + '">' + s.status.toUpperCase() + '</span>'
@@ -146,7 +141,7 @@
         return '' +
           '<div class="submission-card">' +
             '<div class="submission-img-wrap">' +
-              '<img src="' + s.image_url + '" alt="Sky photo" class="submission-img" loading="lazy" onclick="openLightbox(\'' + s.image_url + '\')" style="cursor:pointer;" />' +
+              '<img src="' + s.image_url + '" alt="Sky photo" class="submission-img" loading="lazy" data-lightbox="' + s.image_url + '" style="cursor:pointer;" />' +
             '</div>' +
             '<div class="submission-info">' +
               '<div class="submission-meta">' + dateStr + ' &middot; ' + (s.location || 'Unknown location') + '</div>' +
@@ -155,6 +150,13 @@
             '</div>' +
           '</div>';
       }).join('');
+
+      grid.querySelectorAll('.submission-img[data-lightbox]').forEach(function (img) {
+        img.addEventListener('click', function () {
+          document.getElementById('lightbox-img').src = this.dataset.lightbox;
+          document.getElementById('lightbox').style.display = 'flex';
+        });
+      });
 
       const { data: articles, error: artErr } = await polarisDb
         .from('article_submissions')
@@ -185,7 +187,7 @@
           : '';
         const dateStr = new Date(a.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
         const imgBlock = a.image_url
-          ? '<img src="' + a.image_url + '" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:6px;margin-bottom:0.5rem;" loading="lazy" />'
+          ? '<img src="' + a.image_url + '" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:6px;margin-bottom:0.5rem;cursor:pointer;" loading="lazy" data-lightbox="' + a.image_url + '" />'
           : '';
         return '' +
           '<div class="submission-card">' +
@@ -198,6 +200,13 @@
             '</div>' +
           '</div>';
       }).join('');
+
+      artGrid.querySelectorAll('img[data-lightbox]').forEach(function (img) {
+        img.addEventListener('click', function () {
+          document.getElementById('lightbox-img').src = this.dataset.lightbox;
+          document.getElementById('lightbox').style.display = 'flex';
+        });
+      });
     });
   </script>
 </body>
